@@ -55,7 +55,7 @@ async def record_attendance_entry(
                     status_code=400,
                     detail={
                         "error_code": "QR_EXPIRED",
-                        "message": "QR Code has expired (exceeded 10s validity). Please present the newly generated QR code.",
+                        "message": "QR Code has expired (exceeded 30s validity). Please present the newly generated QR code.",
                     },
                 )
             elif err == "QR_ALREADY_USED":
@@ -204,7 +204,7 @@ async def record_attendance_exit(
                     status_code=400,
                     detail={
                         "error_code": "QR_EXPIRED",
-                        "message": "Exit QR Code has expired (exceeded 10s validity). Please present the newly generated Exit QR code.",
+                        "message": "Exit QR Code has expired (exceeded 30s validity). Please present the newly generated Exit QR code.",
                     },
                 )
             elif err == "QR_ALREADY_USED":

@@ -7,7 +7,7 @@ const QRGeneratorModal = ({ session, onClose }) => {
   const [qrType, setQrType] = useState('ENTRY'); // ENTRY or EXIT
   const [qrToken, setQrToken] = useState(null);
   const [qrJson, setQrJson] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(10);
+  const [timeLeft, setTimeLeft] = useState(30);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,7 +22,7 @@ const QRGeneratorModal = ({ session, onClose }) => {
       });
       setQrToken(res.data.qr_token);
       setQrJson(res.data.qr_json);
-      setTimeLeft(res.data.expires_in_seconds || 10);
+      setTimeLeft(res.data.expires_in_seconds || 30);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to generate QR token');
     } finally {
@@ -45,7 +45,7 @@ const QRGeneratorModal = ({ session, onClose }) => {
     return () => clearInterval(timer);
   }, [timeLeft, qrType]);
 
-  const percentage = (timeLeft / 10) * 100;
+  const percentage = (timeLeft / 30) * 100;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/85 backdrop-blur-md p-0 sm:p-4">

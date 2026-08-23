@@ -139,7 +139,7 @@ class QRService:
                 if not roll:
                     return False, payload, "QR_INVALID_MISSING_ROLL"
 
-                # Timestamp expiration check (max 10 seconds)
+                # Timestamp expiration check (max 30 seconds)
                 ts = payload.get("timestamp")
                 if ts is not None:
                     current_ts = int(time.time())

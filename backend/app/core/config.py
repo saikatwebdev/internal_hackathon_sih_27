@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     QR_SECRET_KEY: str = "super-secret-qr-signing-key-minimum-32-chars-long"
-    QR_EXPIRATION_SECONDS: int = 10
+    QR_EXPIRATION_SECONDS: int = 30
 
     FACE_API_URL: str = "https://face-recognition-test-model.onrender.com/upload"
     FACE_API_TIMEOUT_SECONDS: int = 10
