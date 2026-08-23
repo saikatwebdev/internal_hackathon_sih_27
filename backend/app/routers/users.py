@@ -5,7 +5,7 @@ from app.database.database import get_db
 from app.core.security import get_password_hash
 from app.core.dependencies import require_super_admin, get_current_user
 from app.schemas.user import StudentCreate, StudentUpdate, StudentOut, FacultyCreate, FacultyUpdate, FacultyOut
-from app.database.models import Student, Faculty, Enrollment, AuditLog
+from app.database.models import Student, Faculty, Enrollment, AuditLog, Branch, ClassSession
 
 router = APIRouter(prefix="/users", tags=["User Management"])
 
@@ -35,14 +35,39 @@ def create_student(
     db: Session = Depends(get_db),
     current=Depends(require_super_admin),
 ):
-    existing = db.query(Student).filter((Student.roll_no == req.roll_no) | (Student.phone == req.phone)).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Student with this Roll No or Phone already exists")
+    # Verify branch exists
+    branch = db.query(Branch).filter(Branch.id == req.branch_id).first()
+    if not branch:
+        # Fallback to first available branch if valid
+        first_branch = db.query(Branch).first()
+        if first_branch:
+            req.branch_id = first_branch.id
+        else:
+            raise HTTPException(status_code=400, detail="No academic branch found in database. Create a branch first.")
+
+    # Check roll_no uniqueness
+    existing_roll = db.query(Student).filter(Student.roll_no == req.roll_no).first()
+    if existing_roll:
+        raise HTTPException(status_code=400, detail=f"Student with Roll No '{req.roll_no}' already exists")
+
+    # Check phone uniqueness (only if provided)
+    if req.phone and req.phone.strip():
+        existing_phone = db.query(Student).filter(Student.phone == req.phone.strip()).first()
+        if existing_phone:
+            raise HTTPException(status_code=400, detail=f"Student with Phone '{req.phone}' already exists")
+
+    # Check email uniqueness (only if provided)
+    if req.email and str(req.email).strip():
+        existing_email = db.query(Student).filter(Student.email == str(req.email).strip()).first()
+        if existing_email:
+            raise HTTPException(status_code=400, detail=f"Student with Email '{req.email}' already exists")
+
+    phone_val = req.phone.strip() if (req.phone and req.phone.strip()) else f"N/A_{req.roll_no}"
 
     student = Student(
         roll_no=req.roll_no,
         name=req.name,
-        phone=req.phone,
+        phone=phone_val,
         email=req.email,
         password_hash=get_password_hash(req.password),
         branch_id=req.branch_id,
@@ -137,9 +162,9 @@ def delete_student(student_id: str, db: Session = Depends(get_db), current=Depen
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    student.status = "deactivated"
+    db.delete(student)
     db.commit()
-    return {"message": "Student deactivated successfully"}
+    return {"message": "Student deleted successfully"}
 
 
 # --- FACULTY ENDPOINTS ---
@@ -154,9 +179,18 @@ def create_faculty(
     db: Session = Depends(get_db),
     current=Depends(require_super_admin),
 ):
-    existing = db.query(Faculty).filter((Faculty.employee_id == req.employee_id) | (Faculty.email == req.email)).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Faculty with this Employee ID or Email already exists")
+    existing_emp = db.query(Faculty).filter(Faculty.employee_id == req.employee_id).first()
+    if existing_emp:
+        raise HTTPException(status_code=400, detail=f"Faculty with Employee ID '{req.employee_id}' already exists")
+
+    existing_email = db.query(Faculty).filter(Faculty.email == req.email).first()
+    if existing_email:
+        raise HTTPException(status_code=400, detail=f"Faculty with Email '{req.email}' already exists")
+
+    if req.phone and req.phone.strip():
+        existing_phone = db.query(Faculty).filter(Faculty.phone == req.phone.strip()).first()
+        if existing_phone:
+            raise HTTPException(status_code=400, detail=f"Faculty with Phone '{req.phone}' already exists")
 
     fac = Faculty(
         employee_id=req.employee_id,
@@ -199,3 +233,16 @@ def update_faculty(
     db.commit()
     db.refresh(fac)
     return fac
+
+
+@router.delete("/faculty/{faculty_id}")
+def delete_faculty(faculty_id: str, db: Session = Depends(get_db), current=Depends(require_super_admin)):
+    faculty = db.query(Faculty).filter(Faculty.id == faculty_id).first()
+    if not faculty:
+        raise HTTPException(status_code=404, detail="Faculty not found")
+
+    # Delete class sessions assigned to this faculty member before deleting faculty
+    db.query(ClassSession).filter(ClassSession.faculty_id == faculty.id).delete()
+    db.delete(faculty)
+    db.commit()
+    return {"message": "Faculty deleted successfully"}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axiosClient from '../../api/axiosClient';
-import { UserPlus, Edit3, ShieldCheck, Camera, Upload, Key } from 'lucide-react';
+import { UserPlus, Edit3, ShieldCheck, Camera, Upload, Key, Trash2 } from 'lucide-react';
 import StatusBadge from '../../components/common/StatusBadge';
 
 const StudentManagement = () => {
@@ -45,7 +45,7 @@ const StudentManagement = () => {
       setStudents(stRes.data);
       setBranches(brRes.data);
       if (brRes.data.length > 0) {
-        setFormData((prev) => ({ ...prev, branch_id: brRes.data[0].id }));
+        setFormData((prev) => ({ ...prev, branch_id: prev.branch_id || brRes.data[0].id }));
       }
     } catch (err) {
       console.error('Failed to load students:', err);
@@ -62,10 +62,40 @@ const StudentManagement = () => {
     e.preventDefault();
     try {
       await axiosClient.post('/users/students', formData);
+      alert(`Student "${formData.name}" (${formData.roll_no}) created successfully!`);
       setShowCreateModal(false);
+      setFormData({
+        roll_no: '',
+        name: '',
+        phone: '',
+        email: '',
+        password: 'student123',
+        branch_id: branches[0]?.id || '',
+        year: 2,
+        semester: 3,
+        section: 'A',
+        face_reference_id: '',
+      });
       loadData();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to create student');
+      const detail = err.response?.data?.detail;
+      const msg = typeof detail === 'string' ? detail : (detail?.[0]?.msg || 'Failed to create student');
+      alert(`Error: ${msg}`);
+    }
+  };
+
+  const handleDeleteStudent = async (studentId, studentName) => {
+    if (!window.confirm(`Are you sure you want to delete student "${studentName}"? All related attendance and enrollment records will be permanently removed.`)) {
+      return;
+    }
+    try {
+      await axiosClient.delete(`/users/students/${studentId}`);
+      alert(`Student "${studentName}" deleted successfully.`);
+      loadData();
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      const msg = typeof detail === 'string' ? detail : 'Failed to delete student';
+      alert(`Error: ${msg}`);
     }
   };
 
@@ -90,7 +120,7 @@ const StudentManagement = () => {
     if (!selectedStudent) return;
     try {
       const payload = { ...editFormData };
-      if (!payload.password || !payload.password.trim()) delete payload.password; // keep unchanged if empty
+      if (!payload.password || !payload.password.trim()) delete payload.password;
       await axiosClient.put(`/users/students/${selectedStudent.id}`, payload);
       alert(`Student profile ${editFormData.password ? '& new password' : ''} updated successfully!`);
       setSelectedStudent(null);
@@ -118,10 +148,15 @@ const StudentManagement = () => {
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-xl font-bold text-white tracking-tight">Student Directory</h3>
-          <p className="text-xs text-slate-400">Manage student profiles, passwords, and face biometric records</p>
+          <p className="text-xs text-slate-400">Manage student profiles, passwords, biometrics, and directory records</p>
         </div>
         <button
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => {
+            if (branches.length > 0 && !formData.branch_id) {
+              setFormData((p) => ({ ...p, branch_id: branches[0].id }));
+            }
+            setShowCreateModal(true);
+          }}
           className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-600/20 flex items-center transition-all"
         >
           <UserPlus className="w-4 h-4 mr-2" /> Add Student
@@ -148,7 +183,7 @@ const StudentManagement = () => {
                 <tr key={st.id} className="hover:bg-slate-800/40 transition-colors">
                   <td className="px-6 py-4 font-bold text-blue-400">{st.roll_no}</td>
                   <td className="px-6 py-4 font-semibold text-white">{st.name}</td>
-                  <td className="px-6 py-4 text-slate-300">{st.phone}<br/><span className="text-[10px] text-slate-500">{st.email}</span></td>
+                  <td className="px-6 py-4 text-slate-300">{st.phone || '--'}<br/><span className="text-[10px] text-slate-500">{st.email || '--'}</span></td>
                   <td className="px-6 py-4 text-slate-300">Yr {st.year} • Sem {st.semester} • Sec {st.section}</td>
                   <td className="px-6 py-4">
                     {st.face_registered ? (
@@ -161,12 +196,21 @@ const StudentManagement = () => {
                   </td>
                   <td className="px-6 py-4"><StatusBadge status={st.status} /></td>
                   <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => handleEditClick(st)}
-                      className="px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/30 text-xs font-bold flex items-center ml-auto"
-                    >
-                      <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit / Reset Password
-                    </button>
+                    <div className="flex items-center justify-end space-x-2">
+                      <button
+                        onClick={() => handleEditClick(st)}
+                        className="px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/30 text-xs font-bold flex items-center"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteStudent(st.id, st.name)}
+                        className="px-3 py-1.5 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 border border-rose-500/30 text-xs font-bold flex items-center"
+                        title="Delete Student"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -197,31 +241,33 @@ const StudentManagement = () => {
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white"
               />
               <input
-                type="text" placeholder="Phone Number" required value={formData.phone}
+                type="text" placeholder="Phone Number (Optional)" value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white"
               />
               <input
-                type="email" placeholder="Email" value={formData.email}
+                type="email" placeholder="Email (Optional)" value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white"
               />
               <select
+                required
                 value={formData.branch_id}
                 onChange={(e) => setFormData({ ...formData, branch_id: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white"
               >
+                <option value="">Select Academic Branch</option>
                 {branches.map((b) => <option key={b.id} value={b.id}>{b.branch_name} ({b.branch_code})</option>)}
               </select>
               <div className="grid grid-cols-3 gap-2">
                 <input
                   type="number" placeholder="Year" value={formData.year}
-                  onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
+                  onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) || 1 })}
                   className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white"
                 />
                 <input
                   type="number" placeholder="Semester" value={formData.semester}
-                  onChange={(e) => setFormData({ ...formData, semester: parseInt(e.target.value) })}
+                  onChange={(e) => setFormData({ ...formData, semester: parseInt(e.target.value) || 1 })}
                   className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white"
                 />
                 <input
@@ -233,7 +279,7 @@ const StudentManagement = () => {
 
               <div className="flex space-x-3 pt-4">
                 <button type="button" onClick={() => setShowCreateModal(false)} className="w-1/2 py-2.5 rounded-xl bg-slate-800 text-xs font-semibold text-slate-300">Cancel</button>
-                <button type="submit" className="w-1/2 py-2.5 rounded-xl bg-blue-600 text-xs font-bold text-white">Save Student</button>
+                <button type="submit" className="w-1/2 py-2.5 rounded-xl bg-blue-600 text-xs font-bold text-white shadow-lg">Save Student</button>
               </div>
             </form>
           </div>

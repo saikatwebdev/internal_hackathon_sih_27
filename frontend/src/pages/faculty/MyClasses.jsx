@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
-import { Plus, Calendar, Clock, Eye, BookOpen, Layers } from 'lucide-react';
+import { Plus, Calendar, Clock, Eye, BookOpen, Layers, Trash2 } from 'lucide-react';
 import StatusBadge from '../../components/common/StatusBadge';
 
 const MyClasses = () => {
@@ -124,6 +124,19 @@ const MyClasses = () => {
     }
   };
 
+  const handleDeleteSession = async (sessionId, subjectCode) => {
+    if (!window.confirm(`Are you sure you want to delete scheduled class session for "${subjectCode || 'this course'}"?`)) {
+      return;
+    }
+    try {
+      await axiosClient.delete(`/sessions/${sessionId}`);
+      alert('Class session deleted successfully.');
+      loadData();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to delete class session');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -161,12 +174,21 @@ const MyClasses = () => {
               </p>
             </div>
 
-            <button
-              onClick={() => navigate(`/faculty/classes/${s.id}/attendance`)}
-              className="w-full py-2.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 font-bold text-xs border border-blue-500/30 flex items-center justify-center transition-all"
-            >
-              <Eye className="w-4 h-4 mr-2" /> Open Virtual Spreadsheet
-            </button>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => navigate(`/faculty/classes/${s.id}/attendance`)}
+                className="flex-1 py-2.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 font-bold text-xs border border-blue-500/30 flex items-center justify-center transition-all"
+              >
+                <Eye className="w-4 h-4 mr-2" /> Open Virtual Spreadsheet
+              </button>
+              <button
+                onClick={() => handleDeleteSession(s.id, s.subject?.subject_code)}
+                className="px-3 py-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 font-bold text-xs border border-rose-500/30 flex items-center justify-center transition-all"
+                title="Delete Scheduled Class Session"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         ))}
       </div>

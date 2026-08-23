@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axiosClient from '../../api/axiosClient';
-import { UserCheck, Plus, Edit3, Key } from 'lucide-react';
+import { UserCheck, Plus, Edit3, Key, Trash2 } from 'lucide-react';
 import StatusBadge from '../../components/common/StatusBadge';
 
 const FacultyManagement = () => {
@@ -42,10 +42,36 @@ const FacultyManagement = () => {
     e.preventDefault();
     try {
       await axiosClient.post('/users/faculty', formData);
+      alert(`Faculty member "${formData.name}" (${formData.employee_id}) created successfully!`);
       setShowModal(false);
+      setFormData({
+        employee_id: '',
+        name: '',
+        phone: '',
+        email: '',
+        password: 'faculty123',
+        department: 'CSE',
+      });
       loadFaculty();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to add faculty');
+      const detail = err.response?.data?.detail;
+      const msg = typeof detail === 'string' ? detail : (detail?.[0]?.msg || 'Failed to add faculty member');
+      alert(`Error: ${msg}`);
+    }
+  };
+
+  const handleDeleteFaculty = async (facultyId, facultyName) => {
+    if (!window.confirm(`Are you sure you want to delete faculty member "${facultyName}"? Associated scheduled class sessions will also be removed.`)) {
+      return;
+    }
+    try {
+      await axiosClient.delete(`/users/faculty/${facultyId}`);
+      alert(`Faculty member "${facultyName}" deleted successfully.`);
+      loadFaculty();
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      const msg = typeof detail === 'string' ? detail : 'Failed to delete faculty member';
+      alert(`Error: ${msg}`);
     }
   };
 
@@ -115,12 +141,21 @@ const FacultyManagement = () => {
                 <td className="px-6 py-4 text-slate-300">{f.phone || '--'}</td>
                 <td className="px-6 py-4"><StatusBadge status={f.status} /></td>
                 <td className="px-6 py-4 text-right">
-                  <button
-                    onClick={() => handleEditClick(f)}
-                    className="px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 border border-indigo-500/30 text-xs font-bold flex items-center ml-auto"
-                  >
-                    <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit / Reset Password
-                  </button>
+                  <div className="flex items-center justify-end space-x-2">
+                    <button
+                      onClick={() => handleEditClick(f)}
+                      className="px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 border border-indigo-500/30 text-xs font-bold flex items-center"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteFaculty(f.id, f.name)}
+                      className="px-3 py-1.5 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 border border-rose-500/30 text-xs font-bold flex items-center"
+                      title="Delete Faculty Member"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -155,7 +190,7 @@ const FacultyManagement = () => {
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white"
               />
               <input
-                type="text" placeholder="Phone" value={formData.phone}
+                type="text" placeholder="Phone (Optional)" value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white"
               />

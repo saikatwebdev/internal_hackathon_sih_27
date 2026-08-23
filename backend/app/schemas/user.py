@@ -1,19 +1,26 @@
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 
 
 class StudentCreate(BaseModel):
     roll_no: str
     name: str
-    phone: str
+    phone: Optional[str] = None
     email: Optional[EmailStr] = None
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=3)
     branch_id: str
     year: int
     semester: int
     section: str
     face_reference_id: Optional[str] = None
+
+    @field_validator("email", "phone", "face_reference_id", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v):
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
 
 
 class StudentUpdate(BaseModel):
@@ -29,12 +36,19 @@ class StudentUpdate(BaseModel):
     face_reference_id: Optional[str] = None
     status: Optional[str] = None
 
+    @field_validator("email", "phone", "face_reference_id", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v):
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
 
 class StudentOut(BaseModel):
     id: str
     roll_no: str
     name: str
-    phone: str
+    phone: Optional[str] = None
     email: Optional[str] = None
     branch_id: str
     year: int
@@ -44,8 +58,7 @@ class StudentOut(BaseModel):
     status: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FacultyCreate(BaseModel):
@@ -56,6 +69,13 @@ class FacultyCreate(BaseModel):
     password: str = Field(..., min_length=3)
     department: Optional[str] = None
 
+    @field_validator("phone", "department", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v):
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
 
 class FacultyUpdate(BaseModel):
     name: Optional[str] = None
@@ -64,6 +84,13 @@ class FacultyUpdate(BaseModel):
     password: Optional[str] = Field(None, min_length=3, description="Set/Reset user password")
     department: Optional[str] = None
     status: Optional[str] = None
+
+    @field_validator("email", "phone", "department", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v):
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
 
 
 class FacultyOut(BaseModel):
@@ -76,8 +103,7 @@ class FacultyOut(BaseModel):
     status: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SuperAdminOut(BaseModel):
@@ -87,5 +113,4 @@ class SuperAdminOut(BaseModel):
     phone: Optional[str] = None
     status: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
