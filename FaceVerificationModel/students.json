@@ -1,0 +1,31 @@
+{
+  "students": [
+    {
+      "roll": 387002,
+      "name": "Shubham Ghosh Roy",
+      "images": [
+        "data/R1.png",
+        "data/R2.png",
+        "data/R3.png"
+      ]
+    },
+    {
+      "roll": 387006,
+      "name": "Ayan Suvra Bosu",
+      "images": [
+        "data/A1.png",
+        "data/A2.jpeg",
+        "data/A3.jpeg"
+      ]
+    },
+    {
+      "roll": 387027,
+      "name": "Saikat Tunga",
+      "images": [
+        "data/S1.jpeg",
+        "data/S2.png",
+        "data/S3.png"
+      ]
+    }
+  ]
+}
